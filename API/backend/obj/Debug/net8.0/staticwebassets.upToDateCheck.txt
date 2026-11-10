@@ -1,0 +1,4 @@
+wwwroot\uploads\sample-car-1.jpg
+wwwroot\uploads\sample-car-2.jpg
+wwwroot\uploads\sample-car-3.jpg
+wwwroot\uploads\sample-car-4.jpg

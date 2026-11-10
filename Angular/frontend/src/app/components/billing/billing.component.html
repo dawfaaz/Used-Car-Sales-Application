@@ -1,0 +1,199 @@
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+  <div>
+    <h2 class="page-title mb-1">Sales &amp; GST Billing</h2>
+    <p class="text-muted mb-0">Process vehicle sales and review generated invoices.</p>
+  </div>
+  <button type="button" class="btn btn-outline-primary" (click)="toggleHistory()">
+    {{ historyOpen ? 'Hide' : 'View' }} Sales Invoice History ({{ bills.length }})
+  </button>
+</div>
+
+<div *ngIf="errorMessage" class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+
+<div class="card shadow-sm p-3 p-md-4 mb-4">
+  <h5 class="mb-3">Process Car Sale</h5>
+
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <label for="selectedCarId" class="form-label">Select Vehicle <span class="text-danger">*</span></label>
+      <select id="selectedCarId" [(ngModel)]="selectedCarId" name="selectedCarId" class="form-select"
+              [class.is-invalid]="showSaleValidationErrors && !selectedCar">
+        <option [ngValue]="null">Choose an available vehicle</option>
+        <option *ngFor="let car of availableCars" [ngValue]="car.carId">
+          {{ car.brand }} {{ car.model }} ({{ car.registrationNumber }}) — ₹{{ formatIndianCurrency(car.price) }}
+        </option>
+      </select>
+      <div class="invalid-feedback" *ngIf="showSaleValidationErrors && !selectedCar">Select an available vehicle.</div>
+    </div>
+    <div class="col-lg-4">
+      <label for="selectedCustomerId" class="form-label">Select Customer <span class="text-danger">*</span></label>
+      <select id="selectedCustomerId" [(ngModel)]="selectedCustomerId" name="selectedCustomerId" class="form-select"
+              [class.is-invalid]="showSaleValidationErrors && !selectedCustomer">
+        <option [ngValue]="null">Choose a customer</option>
+        <option *ngFor="let customer of customers" [ngValue]="customer.customerId">
+          {{ customerOptionLabel(customer) }}
+        </option>
+      </select>
+      <div class="invalid-feedback" *ngIf="showSaleValidationErrors && !selectedCustomer">Select a customer.</div>
+    </div>
+    <div class="col-lg-4">
+      <label for="paymentMethod" class="form-label">Payment Method <span class="text-danger">*</span></label>
+      <select id="paymentMethod" [(ngModel)]="paymentMethod" name="paymentMethod" class="form-select"
+              [class.is-invalid]="showSaleValidationErrors && !isPaymentMethodValid">
+        <option value="">Select payment method</option>
+        <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+        <option value="Bank Transfer">Bank Transfer (NEFT/RTGS)</option>
+        <option value="Car Loan / Finance">Car Loan / Finance</option>
+        <option value="Cash">Cash</option>
+      </select>
+      <div class="invalid-feedback" *ngIf="showSaleValidationErrors && !isPaymentMethodValid">Select a payment method.</div>
+    </div>
+    <div class="col-12 d-flex justify-content-end">
+      <button type="button" class="btn btn-warning fw-bold" (click)="executeSale()" [disabled]="isProcessingSale">
+        {{ isProcessingSale ? 'Processing Sale...' : 'Generate Invoice' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="estimate-panel mt-4" *ngIf="selectedCar">
+    <div class="d-flex justify-content-between">
+      <span>Basic price</span><strong>₹{{ formatIndianCurrency(selectedCar.price) }}</strong>
+    </div>
+    <div class="d-flex justify-content-between">
+      <span>CGST ({{ cgstPercentage }}%)</span>
+      <strong>₹{{ formatIndianCurrency(cgstAmount) }}</strong>
+    </div>
+    <div class="d-flex justify-content-between">
+      <span>SGST ({{ sgstPercentage }}%)</span>
+      <strong>₹{{ formatIndianCurrency(sgstAmount) }}</strong>
+    </div>
+    <hr>
+    <div class="d-flex justify-content-between fs-5">
+      <strong>Invoice total</strong><strong class="text-primary">₹{{ formatIndianCurrency(estimatedTotal) }}</strong>
+    </div>
+    <small class="text-muted">GST is fixed at 9% CGST + 9% SGST and calculated by the server.</small>
+  </div>
+</div>
+
+<section *ngIf="historyOpen" aria-labelledby="invoice-history-heading">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 id="invoice-history-heading" class="mb-0">Sales Invoice History</h4>
+    <span class="badge text-bg-dark">{{ bills.length }} invoices</span>
+  </div>
+
+  <div class="card shadow-sm overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Invoice #</th><th>Date</th><th>Vehicle</th><th>Customer</th>
+            <th>Basic Price</th><th>CGST</th><th>SGST</th><th>Total</th><th>Payment</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let bill of pagedBills">
+            <td class="fw-semibold">{{ bill.invoiceNumber }}</td>
+            <td>{{ bill.saleDate | date:'medium' }}</td>
+            <td>{{ bill.car?.brand }} {{ bill.car?.model }}</td>
+            <td>{{ bill.customer?.fullName }}</td>
+            <td>₹{{ formatIndianCurrency(bill.salePrice) }}</td>
+            <td>₹{{ formatIndianCurrency(bill.cgstAmount) }}</td>
+            <td>₹{{ formatIndianCurrency(bill.sgstAmount) }}</td>
+            <td class="fw-bold">₹{{ formatIndianCurrency(bill.totalAmount) }}</td>
+            <td><span class="badge text-bg-info">{{ bill.paymentMethod }}</span></td>
+            <td><button type="button" class="btn btn-outline-primary btn-sm" (click)="viewInvoice(bill)">View Invoice</button></td>
+          </tr>
+          <tr *ngIf="bills.length === 0">
+            <td colspan="10" class="empty-state">No sales invoices available.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 p-3 border-top" *ngIf="bills.length > 0">
+      <div class="d-flex align-items-center gap-2">
+        <label for="historyPageSize" class="text-muted small mb-0">Rows per page</label>
+        <select id="historyPageSize" class="form-select form-select-sm w-auto" [(ngModel)]="historyPageSize" (ngModelChange)="changeHistoryPageSize($event)">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="25">25</option>
+          <option [ngValue]="50">50</option>
+        </select>
+        <span class="text-muted small">{{ firstHistoryRecord }}–{{ lastHistoryRecord }} of {{ bills.length }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">Page {{ historyPageNumber }} of {{ historyTotalPages }}</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="changeHistoryPage(historyPageNumber - 1)" [disabled]="historyPageNumber <= 1">Previous</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="changeHistoryPage(historyPageNumber + 1)" [disabled]="historyPageNumber >= historyTotalPages">Next</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="invoice-backdrop" *ngIf="invoiceToView" (click)="closeInvoice()">
+  <section class="invoice-dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-title" (click)="$event.stopPropagation()">
+    <div class="invoice-actions d-flex justify-content-end gap-2 mb-3">
+      <button type="button" class="btn btn-primary" (click)="printInvoice()">Print Invoice</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="closeInvoice()">Close</button>
+    </div>
+
+    <article id="printable-invoice" class="invoice-paper">
+      <header class="d-flex justify-content-between align-items-start gap-3 border-bottom pb-3 mb-4">
+        <div>
+          <h2 id="invoice-title" class="mb-1">TAX INVOICE</h2>
+          <h5 class="mb-1">Used Car Dealer</h5>
+          <p class="text-muted mb-0">Vehicle sale invoice</p>
+        </div>
+        <div class="text-end">
+          <div><strong>Invoice No:</strong> {{ invoiceToView.invoiceNumber }}</div>
+          <div><strong>Invoice Date:</strong> {{ invoiceToView.saleDate | date:'mediumDate' }}</div>
+        </div>
+      </header>
+
+      <div class="row g-4 mb-4">
+        <div class="col-sm-6">
+          <h6 class="text-uppercase text-muted">Billed To</h6>
+          <div class="fw-bold">{{ invoiceToView.customer?.fullName }}</div>
+          <div>{{ invoiceToView.customer?.email }}</div>
+          <div>{{ invoiceToView.customer?.phone }}</div>
+          <div>{{ invoiceToView.customer?.city }}, {{ invoiceToView.customer?.state }}</div>
+        </div>
+        <div class="col-sm-6">
+          <h6 class="text-uppercase text-muted">Vehicle Details</h6>
+          <div class="fw-bold">{{ invoiceToView.car?.year }} {{ invoiceToView.car?.brand }} {{ invoiceToView.car?.model }} {{ invoiceToView.car?.variant }}</div>
+          <div><strong>Registration:</strong> {{ invoiceToView.car?.registrationNumber }}</div>
+          <div><strong>Fuel / Transmission:</strong> {{ invoiceToView.car?.fuelType }} / {{ invoiceToView.car?.transmission }}</div>
+          <div><strong>Payment:</strong> {{ invoiceToView.paymentMethod }}</div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead class="table-light">
+            <tr><th>Description</th><th class="text-end">Basic Price</th><th class="text-end">CGST (9%)</th><th class="text-end">SGST (9%)</th><th class="text-end">Line Total</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ invoiceToView.car?.year }} {{ invoiceToView.car?.brand }} {{ invoiceToView.car?.model }} {{ invoiceToView.car?.variant }} ({{ invoiceToView.car?.registrationNumber }})</td>
+              <td class="text-end">₹{{ formatIndianCurrency(invoiceToView.salePrice) }}</td>
+              <td class="text-end">₹{{ formatIndianCurrency(invoiceToView.cgstAmount) }}</td>
+              <td class="text-end">₹{{ formatIndianCurrency(invoiceToView.sgstAmount) }}</td>
+              <td class="text-end">₹{{ formatIndianCurrency(invoiceToView.totalAmount) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="invoice-totals ms-auto mt-4">
+        <div class="d-flex justify-content-between"><span>Basic price</span><strong>₹{{ formatIndianCurrency(invoiceToView.salePrice) }}</strong></div>
+        <div class="d-flex justify-content-between"><span>CGST (9%)</span><strong>₹{{ formatIndianCurrency(invoiceToView.cgstAmount) }}</strong></div>
+        <div class="d-flex justify-content-between"><span>SGST (9%)</span><strong>₹{{ formatIndianCurrency(invoiceToView.sgstAmount) }}</strong></div>
+        <hr>
+        <div class="d-flex justify-content-between fs-5"><strong>Invoice Total</strong><strong>₹{{ formatIndianCurrency(invoiceToView.totalAmount) }}</strong></div>
+      </div>
+
+      <footer class="border-top mt-4 pt-3 text-center text-muted small">
+        Thank you for your purchase.
+      </footer>
+    </article>
+  </section>
+</div>

@@ -1,0 +1,479 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="page-title mb-1">Car Stock Inventory</h2>
+    <p class="text-muted mb-0">
+      Add and manage used vehicles in your dealership.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge text-bg-primary fs-6" *ngIf="!isFormOpen"
+      >{{ filteredCars.length }} vehicles</span
+    >
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="toggleForm()"
+      [disabled]="isSaving"
+    >
+      {{ isFormOpen ? "Close Form" : "Add Used Vehicle" }}
+    </button>
+  </div>
+</div>
+
+<div class="card shadow-sm p-3 p-md-4 mb-4" *ngIf="isFormOpen">
+  <h5 class="mb-3">{{ editingId ? "Edit Vehicle" : "Add Used Vehicle" }}</h5>
+  <form #carForm="ngForm" (ngSubmit)="saveCar()">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label"
+          >Brand <span class="text-danger">*</span></label
+        >
+        <select
+          name="brand"
+          [ngModel]="newCar.brand"
+          (ngModelChange)="onBrandChange($event)"
+          class="form-select"
+          [class.is-invalid]="showValidationErrors && !newCar.brand.trim()"
+          required
+        >
+          <option value="">Select brand</option>
+          <option *ngFor="let brand of brandOptions" [value]="brand">
+            {{ brand }}
+          </option>
+        </select>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !newCar.brand.trim()"
+        >
+          Select a brand.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Model <span class="text-danger">*</span></label
+        >
+        <select
+          name="model"
+          [ngModel]="newCar.model"
+          (ngModelChange)="onModelChange($event)"
+          class="form-select"
+          [class.is-invalid]="showValidationErrors && !newCar.model.trim()"
+          [disabled]="!newCar.brand"
+          required
+        >
+          <option value="">Select model</option>
+          <option *ngFor="let model of modelOptions" [value]="model">
+            {{ model }}
+          </option>
+        </select>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !newCar.model.trim()"
+        >
+          Select a model.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Variant <span class="text-danger">*</span></label
+        >
+        <select
+          name="variant"
+          [(ngModel)]="newCar.variant"
+          class="form-select"
+          [class.is-invalid]="showValidationErrors && !newCar.variant?.trim()"
+          [disabled]="!newCar.model"
+          required
+        >
+          <option value="">Select variant</option>
+          <option *ngFor="let variant of variantOptions" [value]="variant">
+            {{ variant }}
+          </option>
+        </select>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !newCar.variant?.trim()"
+        >
+          Select a variant.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Manufacturing Year <span class="text-danger">*</span></label
+        >
+        <select
+          name="year"
+          [(ngModel)]="newCar.year"
+          class="form-select"
+          [class.is-invalid]="showValidationErrors && !yearIsValid"
+          [disabled]="!newCar.model"
+          required
+        >
+          <option [ngValue]="null">Select year</option>
+          <option *ngFor="let year of yearOptions" [ngValue]="year">
+            {{ year }}
+          </option>
+        </select>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !yearIsValid"
+        >
+          Select the manufacturing year.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Price (₹) <span class="text-danger">*</span></label
+        >
+        <input
+          name="price"
+          [value]="priceInput"
+          (input)="onGroupedNumberInput($event, 'price')"
+          type="text"
+          inputmode="numeric"
+          class="form-control"
+          [class.is-invalid]="showValidationErrors && !priceIsValid"
+          placeholder="e.g. 10,00,000"
+          required
+        />
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !priceIsValid"
+        >
+          Enter a whole-rupee price from ₹1 to ₹99,99,99,999.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Mileage (kms) <span class="text-danger">*</span></label
+        >
+        <input
+          name="mileage"
+          [value]="mileageInput"
+          (input)="onGroupedNumberInput($event, 'mileage')"
+          type="text"
+          inputmode="numeric"
+          class="form-control"
+          [class.is-invalid]="showValidationErrors && !mileageIsValid"
+          placeholder="e.g. 1,20,000"
+          required
+        />
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !mileageIsValid"
+        >
+          Enter whole-number mileage from 0 to 1,000,000 km.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Fuel Type <span class="text-danger">*</span></label
+        >
+        <select
+          name="fuelType"
+          [(ngModel)]="newCar.fuelType"
+          class="form-select"
+          [class.is-invalid]="showValidationErrors && !newCar.fuelType.trim()"
+          required
+        >
+          <option value="">Select fuel type</option>
+          <option>Petrol</option>
+          <option>Diesel</option>
+          <option>CNG</option>
+          <option>Electric</option>
+        </select>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !newCar.fuelType.trim()"
+        >
+          Select a fuel type.
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"
+          >Transmission <span class="text-danger">*</span></label
+        >
+        <select
+          name="transmission"
+          [(ngModel)]="newCar.transmission"
+          class="form-select"
+          [class.is-invalid]="
+            showValidationErrors && !newCar.transmission.trim()
+          "
+          required
+        >
+          <option value="">Select transmission</option>
+          <option>Manual</option>
+          <option>Automatic</option>
+        </select>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !newCar.transmission.trim()"
+        >
+          Select a transmission.
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label"
+          >Registration Number <span class="text-danger">*</span></label
+        >
+        <input
+          name="registrationNumber"
+          [value]="newCar.registrationNumber"
+          (input)="onRegistrationInput($event)"
+          class="form-control"
+          [class.is-invalid]="
+            showValidationErrors &&
+            (!newCar.registrationNumber.trim() || !registrationNumberIsValid)
+          "
+          placeholder="TN-01-AB-1234 or 22BH1234AA"
+          maxlength="20"
+          required
+        />
+        <div class="form-text">
+          Standard numbers are formatted as TN-01-AB-1234; BH-series numbers use
+          22BH1234AA.
+        </div>
+        <div
+          class="invalid-feedback"
+          *ngIf="showValidationErrors && !newCar.registrationNumber.trim()"
+        >
+          Registration number is required.
+        </div>
+        <div
+          class="invalid-feedback"
+          *ngIf="
+            showValidationErrors &&
+            newCar.registrationNumber.trim() &&
+            !registrationNumberIsValid
+          "
+        >
+          Enter a valid Indian registration (e.g. TN-01-AB-1234 or 22BH1234AA).
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label"
+          >Vehicle Image <span class="text-danger">*</span></label
+        >
+        <input
+          #imageInput
+          type="file"
+          name="image"
+          class="form-control"
+          [class.is-invalid]="showValidationErrors && !hasImage"
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          [required]="!hasImage"
+          (change)="onImageSelected($event)"
+        />
+        <div class="form-text">JPG, PNG, or WebP; maximum size 5 MB.</div>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && !hasImage">
+          Upload a vehicle image.
+        </div>
+        <div class="text-danger small mt-1" *ngIf="imageErrorMessage">
+          {{ imageErrorMessage }}
+        </div>
+        <img
+          *ngIf="imagePreviewUrl"
+          [src]="imagePreviewUrl"
+          class="car-image-preview mt-2"
+          alt="Selected vehicle preview"
+        />
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+          {{
+            isSaving
+              ? "Saving..."
+              : editingId
+                ? "Update Vehicle"
+                : "Add to Stock"
+          }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary ms-2"
+          (click)="cancelForm()"
+          [disabled]="isSaving"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<ng-container *ngIf="!isFormOpen">
+  <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+  <div *ngIf="isLoading" class="text-center py-4">Loading vehicles...</div>
+
+  <div class="row g-3 mb-4" *ngIf="!isLoading">
+    <div class="col-lg">
+      <div class="input-group">
+        <span class="input-group-text" aria-hidden="true">Search</span>
+        <input
+          type="search"
+          class="form-control"
+          aria-label="Search vehicles"
+          placeholder="Search brand, model, variant, year, price, mileage, fuel, transmission, registration..."
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onSearchChange()"
+        />
+        <button
+          *ngIf="searchTerm"
+          type="button"
+          class="btn btn-outline-secondary"
+          (click)="searchTerm = ''; onSearchChange()"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <label for="carAvailability" class="visually-hidden"
+        >Filter by availability</label
+      >
+      <select
+        id="carAvailability"
+        class="form-select"
+        [(ngModel)]="availabilityFilter"
+        (ngModelChange)="onAvailabilityChange()"
+      >
+        <option value="all">All vehicles</option>
+        <option value="available">Available</option>
+        <option value="sold">Sold</option>
+      </select>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <label for="carSort" class="visually-hidden">Sort vehicles</label>
+      <select
+        id="carSort"
+        class="form-select"
+        [(ngModel)]="sortOption"
+        (ngModelChange)="onSortChange()"
+      >
+        <option value="default">Default order (Available then Sold)</option>
+        <option value="brand">Brand (A–Z)</option>
+        <option value="price-low">Price (low to high)</option>
+        <option value="price-high">Price (high to low)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row g-4 car-inventory-grid" *ngIf="!isLoading">
+    <div
+      class="col-sm-6 col-xl-4"
+      *ngFor="let car of visibleCars; let index = index"
+    >
+      <div class="card h-100 shadow-sm overflow-hidden">
+        <img
+          [src]="car.imageUrl || 'https://placehold.co/600x360?text=Used+Car'"
+          class="car-image"
+          alt="Vehicle image"
+          [attr.loading]="index === 0 ? 'eager' : 'lazy'"
+          [attr.fetchpriority]="index === 0 ? 'high' : 'auto'"
+          decoding="async"
+        />
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <h5 class="card-title">
+              {{ car.year }} {{ car.brand }} {{ car.model }}
+            </h5>
+            <span
+              class="badge"
+              [class.text-bg-success]="car.status === 'Available'"
+              [class.text-bg-secondary]="car.status === 'Sold'"
+              >{{ car.status || "Available" }}</span
+            >
+          </div>
+          <p class="text-muted mb-2">{{ car.variant || "Standard variant" }}</p>
+          <h5 class="text-primary">₹{{ formatPrice(car.price) }}</h5>
+          <div class="small text-muted">
+            <div>
+              <strong>Registration:</strong> {{ car.registrationNumber }}
+            </div>
+            <div>
+              <strong>Fuel / Transmission:</strong> {{ car.fuelType }} /
+              {{ car.transmission }}
+            </div>
+            <div><strong>Odometer:</strong> {{ car.mileage | number }} kms</div>
+          </div>
+        </div>
+        <div class="card-footer bg-white border-0 pt-0">
+          <a
+            class="btn btn-outline-primary btn-sm me-2"
+            [routerLink]="['/cars', car.carId]"
+            >View Details</a
+          ><button
+            *ngIf="car.status !== 'Sold'"
+            class="btn btn-outline-secondary btn-sm me-2"
+            (click)="editCar(car)"
+          >
+            Edit</button
+          ><button
+            *ngIf="car.status !== 'Sold'"
+            class="btn btn-outline-danger btn-sm"
+            (click)="deleteCar(car.carId!)"
+            [disabled]="car.status === 'Sold'"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="col-12" *ngIf="filteredCars.length === 0">
+      <div class="card empty-state">
+        {{
+          searchTerm
+            ? "No vehicles match your search."
+            : "No vehicles found. Add your first used car above."
+        }}
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 p-3 mt-4 bg-white rounded shadow-sm"
+    *ngIf="filteredCars.length > 0"
+  >
+    <div class="d-flex align-items-center gap-2">
+      <label for="carPageSize" class="text-muted small mb-0"
+        >Rows per page</label
+      >
+      <select
+        id="carPageSize"
+        class="form-select form-select-sm w-auto"
+        [(ngModel)]="pageSize"
+        (ngModelChange)="changePageSize($event)"
+      >
+        <option [ngValue]="10">10</option>
+        <option [ngValue]="25">25</option>
+        <option [ngValue]="50">50</option>
+      </select>
+      <span class="text-muted small"
+        >{{ firstRecordNumber }}–{{ lastRecordNumber }} of
+        {{ filteredCars.length }}</span
+      >
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-muted small"
+        >Page {{ pageNumber }} of {{ totalPages }}</span
+      >
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        (click)="changePage(pageNumber - 1)"
+        [disabled]="isLoading || pageNumber <= 1"
+      >
+        Previous
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        (click)="changePage(pageNumber + 1)"
+        [disabled]="isLoading || pageNumber >= totalPages"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+</ng-container>

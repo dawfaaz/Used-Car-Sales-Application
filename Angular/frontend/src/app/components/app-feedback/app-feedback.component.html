@@ -1,0 +1,65 @@
+<div class="toast-stack" aria-live="polite" aria-atomic="false">
+  <div
+    *ngFor="let notification of feedback.notifications()"
+    class="app-toast"
+    [class.toast-success]="notification.type === 'success'"
+    [class.toast-error]="notification.type === 'error'"
+    [class.toast-info]="notification.type === 'info'"
+    [attr.role]="notification.type === 'error' ? 'alert' : 'status'"
+  >
+    <span class="toast-icon" aria-hidden="true">
+      {{
+        notification.type === "success"
+          ? "✓"
+          : notification.type === "error"
+            ? "!"
+            : "i"
+      }}
+    </span>
+    <span class="toast-message">{{ notification.message }}</span>
+    <button
+      type="button"
+      class="toast-dismiss"
+      aria-label="Dismiss notification"
+      (click)="feedback.dismiss(notification.id)"
+    >
+      ×
+    </button>
+  </div>
+</div>
+
+<div
+  *ngIf="feedback.confirmation() as request"
+  class="confirmation-backdrop"
+  (click)="feedback.resolveConfirm(false)"
+  (keydown.escape)="cancelConfirmation()"
+>
+  <section
+    class="confirmation-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="confirmation-title"
+    aria-describedby="confirmation-message"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="confirmation-icon" aria-hidden="true">!</div>
+    <h2 id="confirmation-title">{{ request.title }}</h2>
+    <p id="confirmation-message">{{ request.message }}</p>
+    <div class="confirmation-actions">
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        (click)="feedback.resolveConfirm(false)"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-danger"
+        (click)="feedback.resolveConfirm(true)"
+      >
+        {{ request.confirmLabel }}
+      </button>
+    </div>
+  </section>
+</div>

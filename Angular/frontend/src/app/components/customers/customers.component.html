@@ -1,0 +1,108 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="page-title mb-1">Customer Directory</h2>
+    <p class="text-muted mb-0">Register and manage dealership customers.</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="toggleRegistration()">
+    {{ isRegistrationOpen ? 'Close Form' : 'Register Customer' }}
+  </button>
+</div>
+
+<div class="card shadow-sm p-3 p-md-4 mb-4" *ngIf="isRegistrationOpen">
+  <h5 class="mb-3">{{ editingCustomerId !== null ? 'Edit Customer' : 'Register Customer' }}</h5>
+  <form #customerForm="ngForm" (ngSubmit)="saveCustomer()">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+        <input name="fullName" [(ngModel)]="newCustomer.fullName" class="form-control" [class.is-invalid]="showValidationErrors && !newCustomer.fullName.trim()" required>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && !newCustomer.fullName.trim()">Full name is required.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Email <span class="text-danger">*</span></label>
+        <input #emailField="ngModel" name="email" [(ngModel)]="newCustomer.email" type="email" class="form-control" [class.is-invalid]="showValidationErrors && (!newCustomer.email.trim() || (allRequiredFieldsFilled && emailField.invalid))" required>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && !newCustomer.email.trim()">Email address is required.</div>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && allRequiredFieldsFilled && newCustomer.email.trim() && emailField.invalid">
+          Enter a valid email address, such as name&#64;example.com.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+        <input #phoneField="ngModel" name="phone" [(ngModel)]="newCustomer.phone" class="form-control" [class.is-invalid]="showValidationErrors && (!newCustomer.phone.trim() || (allRequiredFieldsFilled && phoneField.invalid))" placeholder="10-digit mobile number" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" required>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && !newCustomer.phone.trim()">Mobile number is required.</div>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && allRequiredFieldsFilled && newCustomer.phone.trim() && phoneField.invalid">
+          Enter exactly 10 digits.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">City <span class="text-danger">*</span></label>
+        <input name="city" [(ngModel)]="newCustomer.city" class="form-control" [class.is-invalid]="showValidationErrors && !newCustomer.city.trim()" required>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && !newCustomer.city.trim()">City is required.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">State <span class="text-danger">*</span></label>
+        <input name="state" [(ngModel)]="newCustomer.state" class="form-control" [class.is-invalid]="showValidationErrors && !newCustomer.state.trim()" required>
+        <div class="invalid-feedback" *ngIf="showValidationErrors && !newCustomer.state.trim()">State is required.</div>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="d-flex gap-2 w-100">
+          <button type="submit" class="btn btn-success flex-fill" [disabled]="isSaving">
+            {{ isSaving ? (editingCustomerId !== null ? 'Updating...' : 'Registering...') : (editingCustomerId !== null ? 'Update Customer' : 'Save Customer') }}
+          </button>
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelRegistration()" [disabled]="isSaving">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<ng-container *ngIf="!isRegistrationOpen">
+  <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+  <div *ngIf="isLoading" class="text-center py-4">Loading customers...</div>
+
+  <div class="card shadow-sm overflow-hidden" *ngIf="!isLoading">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th><th>Full Name</th><th>Email</th><th>Phone</th><th>City</th><th>State</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let customer of customers">
+            <td>{{ customer.customerId ?? '-' }}</td>
+            <td class="fw-semibold">{{ customer.fullName }}</td>
+            <td>{{ customer.email }}</td>
+            <td>{{ customer.phone }}</td>
+            <td>{{ customer.city }}</td>
+            <td>{{ customer.state }}</td>
+            <td>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="editCustomer(customer)">Edit</button>
+                <button type="button" class="btn btn-outline-danger btn-sm" (click)="deleteCustomer(customer.customerId!)" [disabled]="!customer.customerId">Remove</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="customers.length === 0">
+            <td colspan="7" class="empty-state">No customers registered yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 p-3 border-top" *ngIf="totalRecords > 0">
+      <div class="d-flex align-items-center gap-2">
+        <label for="customerPageSize" class="text-muted small mb-0">Rows per page</label>
+        <select id="customerPageSize" class="form-select form-select-sm w-auto" [(ngModel)]="pageSize" (ngModelChange)="changePageSize($event)">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="25">25</option>
+          <option [ngValue]="50">50</option>
+        </select>
+        <span class="text-muted small">{{ firstRecordNumber }}–{{ lastRecordNumber }} of {{ totalRecords }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">Page {{ pageNumber }} of {{ totalPages }}</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="changePage(pageNumber - 1)" [disabled]="isLoading || pageNumber <= 1">Previous</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="changePage(pageNumber + 1)" [disabled]="isLoading || pageNumber >= totalPages">Next</button>
+      </div>
+    </div>
+  </div>
+</ng-container>

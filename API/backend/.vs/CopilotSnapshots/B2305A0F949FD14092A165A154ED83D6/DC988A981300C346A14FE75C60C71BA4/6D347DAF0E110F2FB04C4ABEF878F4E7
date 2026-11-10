@@ -1,0 +1,143 @@
+﻿using IndianUsedCarApi.Data;
+using IndianUsedCarApi.DTOs;
+using IndianUsedCarApi.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace IndianUsedCarApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class CustomersController(ApplicationDbContext context) : ControllerBase
+{
+
+    [HttpGet]
+    async Task<IActionResult> GetCustomers(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? searchTerm = null)
+    {
+        var query = context.Customers.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(c => c.FullName.Contains(searchTerm) ||
+                                     c.Email.Contains(searchTerm) ||
+                                     c.Phone.Contains(searchTerm));
+        }
+
+        var totalRecords = await query.CountAsync();
+
+        var customers = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            TotalRecords = totalRecords,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            Data = customers
+        });
+    }
+    private async Task<bool> IsEmailOrPhoneUniqueAsync(string email, string phoneNumber, int? excludeId = null)
+    {
+        return !await context.Customers.AnyAsync(c =>
+            (c.Email == email || c.Phone == phoneNumber) &&
+            (!excludeId.HasValue || c.CustomerId != excludeId.Value));
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetCustomerById(int id)
+    {
+        var customer = await context.Customers.FindAsync(id);
+        return customer is null ? NotFound() : Ok(customer);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerDto dto)
+    {
+        var customer = new Customer
+        {
+            FullName = dto.FullName,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            City = dto.City,
+            State = dto.State
+        };
+
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetCustomers), new { id = customer.CustomerId }, customer);
+    }
+
+    [HttpPut("{id}")]
+    async Task<IActionResult> UpdateCustomer(int id, [FromBody] CustomerUpdateDto dto)
+    {
+        var customer = await context.Customers.FindAsync(id);
+        if (customer == null) return NotFound();
+
+        if (!await IsEmailOrPhoneUniqueAsync(dto.Email, dto.PhoneNumber, id))
+        {
+            return BadRequest("Email or Phone number already exists.");
+        }
+
+        customer.FullName = dto.Name;
+        customer.Email = dto.Email;
+        customer.Phone = dto.PhoneNumber;
+
+        await context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // PATCH: api/customers/{id}
+    [HttpPatch("{id}")]
+    async Task<IActionResult> PatchCustomer(int id, [FromBody] JsonPatchDocument<CustomerPatchDto> patchDoc)
+    {
+        var customer = await context.Customers.FindAsync(id);
+        if (customer == null) return NotFound();
+
+        var customerToPatch = new CustomerPatchDto
+        {
+            Name = customer.FullName,
+            Email = customer.Email,
+            PhoneNumber = customer.Phone
+        };
+
+        patchDoc.ApplyTo(customerToPatch, ModelState);
+
+        if (!TryValidateModel(customerToPatch))
+            return BadRequest(ModelState);
+
+        if (!await IsEmailOrPhoneUniqueAsync(customerToPatch.Email, customerToPatch.PhoneNumber, id))
+        {
+            return BadRequest("Email or Phone number already exists.");
+        }
+
+        customer.FullName = customerToPatch.Name;
+        customer.Email = customerToPatch.Email;
+        customer.Phone = customerToPatch.PhoneNumber;
+
+        await context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> SoftDeleteCustomer(int id)
+    {
+        var customer = await context.Customers
+            .FirstOrDefaultAsync(customer => customer.CustomerId == id);
+
+        if (customer is null)
+            return NotFound();
+
+        var hasBills = await context.Bills.AnyAsync(b => b.CustomerId == id);
+        if (hasBills) return BadRequest("Customers with sales history cannot be removed.");
+        customer.IsDeleted = true;
+        await context.SaveChangesAsync();
+
+        return NoContent();
+    }
+}

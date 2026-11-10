@@ -1,0 +1,47 @@
+<header class="site-header">
+  <nav
+    class="container-fluid page-container navbar-shell"
+    aria-label="Main navigation"
+  >
+    <a
+      class="brand-lockup"
+      routerLink="/cars"
+      aria-label="Used Car Dealer home"
+    >
+      <span class="brand-mark" aria-hidden="true">UC</span>
+      <span class="brand-copy">
+        <span class="brand-name">Used Car Dealer</span>
+        <span class="brand-caption">Inventory &amp; sales</span>
+      </span>
+    </a>
+    <div class="navbar-nav app-nav">
+      <a class="nav-link" routerLink="/cars" routerLinkActive="active"
+        >Inventory</a
+      >
+      <a class="nav-link" routerLink="/customers" routerLinkActive="active"
+        >Customers</a
+      >
+      <a class="nav-link" routerLink="/billing" routerLinkActive="active"
+        >Sales &amp; Billing</a
+      >
+      <button
+        type="button"
+        class="theme-toggle"
+        (click)="toggleTheme()"
+        [attr.aria-pressed]="isDarkMode"
+        [attr.aria-label]="
+          isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'
+        "
+      >
+        <span class="theme-indicator" aria-hidden="true"></span>
+        {{ isDarkMode ? "Light mode" : "Dark mode" }}
+      </button>
+    </div>
+  </nav>
+</header>
+
+<main class="container-fluid page-container app-main">
+  <router-outlet></router-outlet>
+</main>
+
+<app-feedback></app-feedback>

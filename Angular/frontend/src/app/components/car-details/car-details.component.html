@@ -1,0 +1,36 @@
+<a routerLink="/cars" class="btn btn-outline-secondary mb-3">Back to cars</a>
+
+<div *ngIf="errorMessage" class="alert alert-danger" role="alert">
+  {{ errorMessage }}
+</div>
+
+<article *ngIf="car" class="card shadow-sm overflow-hidden">
+  <div class="row g-0">
+    <div class="col-md-6">
+      <img
+        class="detail-image"
+        [src]="car.imageUrl || 'https://placehold.co/800x500?text=Used+Car'"
+        [alt]="car.year + ' ' + car.brand + ' ' + car.model">
+    </div>
+    <div class="col-md-6">
+      <div class="card-body p-4 p-lg-5">
+        <h2>{{ car.year }} {{ car.brand }} {{ car.model }}</h2>
+        <p class="text-muted">{{ car.variant || 'Standard variant' }}</p>
+        <h3 class="text-primary">₹{{ formatPrice(car.price) }}</h3>
+        <hr>
+        <dl class="row mb-0">
+          <dt class="col-6">Registration</dt>
+          <dd class="col-6">{{ car.registrationNumber }}</dd>
+          <dt class="col-6">Mileage</dt>
+          <dd class="col-6">{{ car.mileage | number }} kms</dd>
+          <dt class="col-6">Fuel type</dt>
+          <dd class="col-6">{{ car.fuelType }}</dd>
+          <dt class="col-6">Transmission</dt>
+          <dd class="col-6">{{ car.transmission }}</dd>
+          <dt class="col-6">Status</dt>
+          <dd class="col-6">{{ car.status || 'Available' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</article>
